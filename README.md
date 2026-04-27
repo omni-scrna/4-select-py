@@ -1,6 +1,6 @@
-# 4-select-py
+# Step4: Python-based scRNA-seq gene selection methods
 
-Python-based scRNA-seq gene selection methods
+This module implements Python-based methods for gene selection
 
 **Generated with [OmniBenchmark](https://omnibenchmark.org) v0.4.0.post19+g9df617e9c.d20260402**
 

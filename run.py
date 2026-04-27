@@ -21,7 +21,11 @@ def parse_args():
     # Stage-specific inputs
     parser.add_argument('--normalized.h5', nargs='+', dest='normalized_h5', required=True,
                        help='Input: normalized.h5')
-
+    parser.add_argument('--selection_type', type=str, required=True,
+                       choices = ["scanpy_hvg"], #, "pearson_residuals", "giniclust3"],
+                       help='Selection method')
+    parser.add_argument('--number_selected', type=int, required=True,
+                       help='Input: number_selected')
     return parser.parse_args()
 
 def main():
@@ -30,6 +34,8 @@ def main():
     print(f"Output directory: {args.output_dir}")
     print(f"Module name: {args.name}")
     print(f"normalized.h5: {args.normalized_h5}")
+    print(f"selection_type: {args.selection_type}")
+    print(f"number_selected: {args.number_selected}")
 
     # TODO: Implement your module logic
     # Process the data using main function
