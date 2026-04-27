@@ -1,0 +1,28 @@
+cff-version: 1.2.0
+message: "If you use this module in your publication, please cite as below."
+type: software
+title: "4-select-py"
+abstract: |
+  Python-based scRNA-seq gene selection methods
+authors:
+  - family-names: "Cai"
+    given-names: "Peiying"
+    email: "peiying.cai@uzh.ch"
+date-released: "2026-04-27"
+version: "1.0.0"
+license: MIT
+url: "https://github.com/CHANGE_ME/4-select-py"
+repository-code: "https://github.com/CHANGE_ME/4-select-py"
+keywords:
+  - bioinformatics
+  - computational-biology
+  - benchmark
+  - omnibenchmark
+  - module
+references:
+  - title: "Original implementation"
+    authors:
+      - family-names: "Cai"
+        given-names: "Peiying"
+    type: software
+    url: "https://github.com/CHANGE_ME/4-select-py"
