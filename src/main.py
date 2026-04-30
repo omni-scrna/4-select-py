@@ -3,22 +3,22 @@
 from pathlib import Path
 import gzip
 import scanpy as sc
-import giniclust3 as gc
+# import giniclust3 as gc
 
-def select_by_giniclust3(adata, number_selected):
-    """Select features with highest Gini coefficient."""
-    # https://github.com/rdong08/GiniClust3
-    adata = adata.copy()
-    # GiniClust3 uses p-value and min_gini_value cutoffs.
-    # The output size may differ from number_selected.
-    gc.gini.calGini(adata)
+# def select_by_giniclust3(adata, number_selected):
+#     """Select features with highest Gini coefficient."""
+#     # https://github.com/rdong08/GiniClust3
+#     adata = adata.copy()
+#     # GiniClust3 uses p-value and min_gini_value cutoffs.
+#     # The output size may differ from number_selected.
+#     gc.gini.calGini(adata)
 
-    if "gini" not in adata.var:
-        raise ValueError(
-            f"GiniClust3 did not produce 'gini'. Columns: {adata.var.columns.tolist()}"
-        )
+#     if "gini" not in adata.var:
+#         raise ValueError(
+#             f"GiniClust3 did not produce 'gini'. Columns: {adata.var.columns.tolist()}"
+#         )
 
-    return adata.var_names[adata.var["gini"]].tolist()
+#     return adata.var_names[adata.var["gini"]].tolist()
 
 
 def select_by_scanpy_hvg(adata, number_selected):
@@ -30,14 +30,14 @@ def select_by_scanpy_hvg(adata, number_selected):
     return selected[:number_selected]
 
 # This method expects raw counts as input.
-def select_by_scanpy_pearson_residuals(adata, number_selected):
-    """Select HVGs by Scanpy analytic Pearson residuals."""
-    # https://scanpy.readthedocs.io/en/stable/tutorials/experimental/pearson_residuals.html
-    adata = adata.copy()
+# def select_by_scanpy_pearson_residuals(adata, number_selected):
+#     """Select HVGs by Scanpy analytic Pearson residuals."""
+#     # https://scanpy.readthedocs.io/en/stable/tutorials/experimental/pearson_residuals.html
+#     adata = adata.copy()
 
-    sc.experimental.pp.highly_variable_genes(adata, flavor="pearson_residuals", n_top_genes=number_selected, clip=None)
+#     sc.experimental.pp.highly_variable_genes(adata, flavor="pearson_residuals", n_top_genes=number_selected, clip=None)
 
-    return adata.var_names[adata.var["highly_variable"]].tolist()
+#     return adata.var_names[adata.var["highly_variable"]].tolist()
 
 
 def process_data(args):
