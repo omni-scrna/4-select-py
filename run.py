@@ -24,7 +24,7 @@ def parse_args():
     parser.add_argument('--normalized.h5', nargs='+', dest='normalized_h5', required=True,
                        help='Input: normalized.h5')
     parser.add_argument('--selection_type', type=str, required=True,
-                       choices = ["scanpy_hvg","pearson_residuals"] # "giniclust3"],
+                       choices = ["scanpy_hvg","pearson_residuals"], # "giniclust3"],
                        help='Selection method')
     parser.add_argument('--number_selected', type=int, required=True,
                        help='Input: number_selected')
