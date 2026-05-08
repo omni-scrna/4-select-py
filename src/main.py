@@ -50,6 +50,28 @@ def read_tenx_matrix(h5_path):
     adata.var_names = gene_ids
     return adata
 
+def write_tenx_matrix(adata, h5_path):
+    """Write AnnData cells x genes as TENx-like HDF5 matrix genes x cells."""
+    X = adata.X
+    if sparse.issparse(X):
+        m = X.T.tocsc()
+    else:
+        m = sparse.csc_matrix(X.T)
+
+    gene_ids = np.asarray(adata.var_names.astype(str))
+    cell_ids = np.asarray(adata.obs_names.astype(str))
+
+    str_dtype = h5py.string_dtype(encoding="utf-8")
+
+    with h5py.File(h5_path, "w") as h5:
+        g = h5.create_group("matrix")
+        g.create_dataset("data", data=m.data, compression="gzip")
+        g.create_dataset("indices", data=m.indices, compression="gzip")
+        g.create_dataset("indptr", data=m.indptr, compression="gzip")
+        g.create_dataset("shape", data=np.asarray(m.shape, dtype=np.int64))
+        g.create_dataset("genes", data=gene_ids.astype(str_dtype))
+        g.create_dataset("barcodes", data=cell_ids.astype(str_dtype))
+
 # import giniclust3 as gc
 
 # def select_by_giniclust3(adata, number_selected):
@@ -77,14 +99,14 @@ def select_by_scanpy_hvg(adata, number_selected):
     return selected[:number_selected]
 
 # This method expects raw counts as input.
-# def select_by_scanpy_pearson_residuals(adata, number_selected):
-#     """Select HVGs by Scanpy analytic Pearson residuals."""
-#     # https://scanpy.readthedocs.io/en/stable/tutorials/experimental/pearson_residuals.html
-#     adata = adata.copy()
+def select_by_scanpy_pearson_residuals(adata, number_selected):
+    """Select HVGs by Scanpy analytic Pearson residuals."""
+    # https://scanpy.readthedocs.io/en/stable/tutorials/experimental/pearson_residuals.html
+    adata = adata.copy()
 
-#     sc.experimental.pp.highly_variable_genes(adata, flavor="pearson_residuals", n_top_genes=number_selected, clip=None)
+    sc.experimental.pp.highly_variable_genes(adata, flavor="pearson_residuals", n_top_genes=number_selected, clip=None)
 
-#     return adata.var_names[adata.var["highly_variable"]].tolist()
+    return adata.var_names[adata.var["highly_variable"]].tolist()
 
 
 def process_data(args):
@@ -95,6 +117,7 @@ def process_data(args):
             - output_dir: Output directory path
             - name: Module name
             - normalized_h5: Input files for normalized.h5 (CLI: --normalized.h5)
+            - rawdata_h5ad: Input files for rawdata.h5ad (CLI: --rawdata.h5ad)
 
     Note: Input IDs with dots (e.g., 'data.raw') are converted to underscores
           in Python variable names (e.g., 'data_raw') but preserve dots in CLI args.
@@ -106,29 +129,33 @@ def process_data(args):
 
     # Access stage inputs
     normalized_h5_files = args.normalized_h5[0]
+    rawdata_h5ad_files = args.rawdata_h5ad[0]
     number_selected = int(args.number_selected)
+    print(f"  rawdata.h5ad: {rawdata_h5ad_files}")
     print(f"  normalized.h5: {normalized_h5_files}")
     print(f"  selection_type: {args.selection_type}")
     print(f"  number_selected: {number_selected}")
 
-    adata = read_tenx_matrix(normalized_h5_files)
-    # TODO: Implement your processing logic here
-    # Example: Read inputs, process, write outputs
-    if number_selected > adata.n_vars:
+    adata_norm = read_tenx_matrix(normalized_h5_files)
+
+    if number_selected > adata_norm.n_vars:
         raise ValueError(
-            f"number_selected={number_selected} is larger than number of features={adata.n_vars}"
+            f"number_selected={number_selected} is larger than number of features={adata_norm.n_vars}"
         )
     
     if args.selection_type == "scanpy_hvg":
-        sel_feats = select_by_scanpy_hvg(adata, number_selected)
+        sel_feats = select_by_scanpy_hvg(adata_norm, number_selected)
 
     # TODO：order by gini coef and select top  N; currently it is based on pvalue
     # elif args.selection_type == "giniclust3":
     #     sel_feats = select_by_giniclust3(adata, number_selected)
 
-    # TODO: input supposed to be the raw counts
-    # elif args.selection_type == "pearson_residuals":
-    #     sel_feats = select_by_scanpy_pearson_residuals(adata, number_selected)
+    elif args.selection_type == "pearson_residuals":
+        adata_raw = sc.read_h5ad(rawdata_h5ad_files)
+        shared_cells = adata_norm.obs_names.intersection(adata_raw.obs_names)
+        shared_genes = adata_norm.var_names.intersection(adata_raw.var_names)
+        adata_filtered = adata_raw[adata_norm.obs_names, adata_norm.var_names].copy()
+        sel_feats = select_by_scanpy_pearson_residuals(adata_filtered, number_selected)
 
     else:
         raise ValueError(f"Unknown selection_type: {args.selection_type}")
@@ -136,9 +163,13 @@ def process_data(args):
     print(f"length(sel_feats): {len(sel_feats)}")
 
     # Write a simple output file
-    output_file = output_dir / f"{args.name}_selected.txt.gz"
-    with gzip.open(output_file, "wt") as f:
-        for feat in sel_feats:
-            f.write(f"{feat}\n")
+    adata_selected = adata_norm[:, sel_feats].copy()
 
+    output_file = output_dir / f"{args.name}_normalized_selected.h5"
+    print(f"output_file: {output_file}")
+
+    write_tenx_matrix(adata_selected, output_file)
+
+    stat = output_file.stat()
     print(f"Results written to: {output_file}")
+    print(f"size: {stat.st_size}")
