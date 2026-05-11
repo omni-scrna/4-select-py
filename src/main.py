@@ -58,9 +58,8 @@ def write_tenx_matrix(adata, h5_path):
     else:
         m = sparse.csc_matrix(X.T)
 
-    gene_ids = np.asarray(adata.var_names.astype(str))
-    cell_ids = np.asarray(adata.obs_names.astype(str))
-
+    gene_ids = np.asarray(adata.var_names.astype(str), dtype=object)
+    cell_ids = np.asarray(adata.obs_names.astype(str), dtype=object)
     str_dtype = h5py.string_dtype(encoding="utf-8")
 
     with h5py.File(h5_path, "w") as h5:
@@ -69,8 +68,9 @@ def write_tenx_matrix(adata, h5_path):
         g.create_dataset("indices", data=m.indices, compression="gzip")
         g.create_dataset("indptr", data=m.indptr, compression="gzip")
         g.create_dataset("shape", data=np.asarray(m.shape, dtype=np.int64))
-        g.create_dataset("genes", data=gene_ids.astype(str_dtype))
-        g.create_dataset("barcodes", data=cell_ids.astype(str_dtype))
+        g.create_dataset("genes", data=gene_ids, dtype=str_dtype)
+        g.create_dataset("barcodes", data=cell_ids, dtype=str_dtype)
+
 
 # import giniclust3 as gc
 
@@ -128,15 +128,15 @@ def process_data(args):
     print(f"Processing module: {args.name}")
 
     # Access stage inputs
-    normalized_h5_files = args.normalized_h5[0]
-    rawdata_h5ad_files = args.rawdata_h5ad[0]
+    normalized_h5_file = args.normalized_h5[0]
+    rawdata_h5ad_file = args.rawdata_h5ad[0]
     number_selected = int(args.number_selected)
-    print(f"  rawdata.h5ad: {rawdata_h5ad_files}")
-    print(f"  normalized.h5: {normalized_h5_files}")
+    print(f"  rawdata.h5ad: {rawdata_h5ad_file}")
+    print(f"  normalized.h5: {normalized_h5_file}")
     print(f"  selection_type: {args.selection_type}")
     print(f"  number_selected: {number_selected}")
 
-    adata_norm = read_tenx_matrix(normalized_h5_files)
+    adata_norm = read_tenx_matrix(normalized_h5_file)
 
     if number_selected > adata_norm.n_vars:
         raise ValueError(
@@ -151,10 +151,19 @@ def process_data(args):
     #     sel_feats = select_by_giniclust3(adata, number_selected)
 
     elif args.selection_type == "pearson_residuals":
-        adata_raw = sc.read_h5ad(rawdata_h5ad_files)
-        shared_cells = adata_norm.obs_names.intersection(adata_raw.obs_names)
-        shared_genes = adata_norm.var_names.intersection(adata_raw.var_names)
+        adata_raw = sc.read_h5ad(rawdata_h5ad_file)
+
+        if "counts" not in adata_raw.layers:
+            raise ValueError("pearson_residuals requires rawdata.h5ad layers['counts']")
+        
         adata_filtered = adata_raw[adata_norm.obs_names, adata_norm.var_names].copy()
+        adata_filtered.X = adata_filtered.layers["counts"].copy()
+
+        if sparse.issparse(adata_filtered.X):
+            adata_filtered.X = sparse.csr_matrix(adata_filtered.X)
+        else:
+            adata_filtered.X = np.asarray(adata_filtered.X)
+
         sel_feats = select_by_scanpy_pearson_residuals(adata_filtered, number_selected)
 
     else:
